@@ -19,7 +19,8 @@ const PLAYERS = {
 class App extends Component {
   constructor() {
     super();
-    this.state = { board: this.makeBoard(BOARD_SIZE), 
+    this.checkers = this.makeCheckers();
+    this.state = { board: this.makeBoard(), 
                   turn: PLAYER_ONE, 
                   selectedSquare: null };
     this.moveMade = false;
@@ -28,84 +29,94 @@ class App extends Component {
 
   selectSquare(row, column) {
     console.log("in select square for row "+row+" column "+column);
-    if (!this.moveMade && this.state.selectedSquare && this.state.selectedSquare.row == row && 
-        this.state.selectedSquare.column == column) {
-      console.log("selected the selected..");
-      this.deselect();
+    let selected = this.state.selectedSquare;
+    if (!this.moveMade  
+        && selected 
+        && selected.row == row 
+        && selected.column == column) {
+        this.deselect();
     }
-    else if (this.state.selectedSquare == null && this.canSelectSquare(row, column)) {
+    else if (selected == null && this.canSelectSquare(row, column)) {
       this.setSquare(row, column);
     } 
     else if (this.state.selectedSquare != null && this.canMoveToSquare(row, column)) {
-       this.moveSelected(row, column);
-    //   if !canSetMore turn = other player
-    console.log("allowed!!");
+      this.moveSelected(row, column);
+      console.log("allowed!!");
     }
-  }
-
-  deselect() {
-    let newBoard = JSON.parse(JSON.stringify(this.state.board));
-    newBoard[this.state.selectedSquare.row][this.state.selectedSquare.column] /= 10;
-    this.setState({board: newBoard, selectedSquare: null});
   }
 
   moveSelected(row, column) {
     let newBoard = JSON.parse(JSON.stringify(this.state.board));
-    newBoard[row][column] = this.state.turn * 10;
+    let checker = newBoard[this.state.selectedSquare.row][this.state.selectedSquare.column];
+    newBoard[row][column] = checker;
     newBoard[this.state.selectedSquare.row][this.state.selectedSquare.column] = null;
     this.moveMade = true;
     if (Math.abs(this.state.selectedSquare.row - row) == 2) {
-      let diff = this.state.turn == PLAYER_ONE ? 1 : -1; 
+      let diff;
+      if ((this.state.turn == PLAYER_ONE && !checker.isKing) ||  
+          (this.state.turn == PLAYER_TWO && checker.isKing)
+        ) {
+        diff = 1;
+      } else {
+        diff = -1;
+      }
       let col = (column + this.state.selectedSquare.column) / 2
       newBoard[row - diff][col] = null;
       this.scores[this.state.turn]++;
     }
-    this.setState({board: newBoard, selectedSquare: {row: row, column: column}});
-  }
-
-  canSelectSquare(row, column) {
-    if (this.state.board[row][column] == this.state.turn) {
-      return true;
+    if ((row == 0 && this.state.turn == PLAYER_TWO) || 
+       (row == BOARD_SIZE-1 && this.state.turn == PLAYER_ONE)) {
+      this.checkers[checker].isKing = true;
     }
-    return false;
+    this.setState({board: newBoard, selectedSquare: {row: row, column: column}});
   }
 
   canMoveToSquare(row, column) {
     console.log("checking if you can move here....");
-    let diff = this.state.turn == PLAYER_ONE ? 1 : -1;
-    if (row - this.state.selectedSquare.row == diff &&
-        Math.abs(this.state.selectedSquare.column - column) == 1 &&
-        !this.moveMade &&
-        this.state.board[row][column] == null
-       ) {
-        return true;
-    } else if (
-        row - this.state.selectedSquare.row == 2*diff &&
-        Math.abs(this.state.selectedSquare.column - column) == 2 &&
-        this.state.board[row][column] == null
+    if (this.state.board[row][column] != null) {
+      return false;
+    }
+
+    let selected = this.state.selectedSquare;
+    let checker = this.checkers[this.state.board[selected.row][selected.column]];
+    let diff;
+    if ((this.state.turn == PLAYER_ONE && !checker.isKing) ||  
+        (this.state.turn == PLAYER_TWO && checker.isKing)
       ) {
-      console.log("can you jump?");
-      let col = (column + this.state.selectedSquare.column) / 2
-      return this.state.board[row - diff][col] == this.nextPlayer();
+      diff = 1;
+    } else {
+      diff = -1;
+    }
+
+    if (row - selected.row == diff &&
+        Math.abs(selected.column - column) == 1 &&
+        !this.moveMade) {
+        return true;
+    } else if ( row - selected.row == 2*diff &&
+      Math.abs(selected.column - column) == 2 ) {
+        console.log("can you jump?");
+        let col = (column + selected.column) / 2;
+        let square = this.state.board[row - diff][col];
+        return square && this.checkers[square].player == this.nextPlayer();
     }
     return false;
   }
 
-  setSquare(row, column) {
-    console.log("heyyy");
-    let newBoard = JSON.parse(JSON.stringify(this.state.board));
-    if (newBoard[row][column]) {
-      newBoard[row][column] *= 10;
+  canSelectSquare(row, column) {
+    let square = this.state.board[row][column];
+    if (!square) {
+      return false;
     }
-    this.setState({board: newBoard, selectedSquare: {row: row, column: column}});
-    //console.log(JSON.stringify(newBoard));
+    let player = this.checkers[square].player;
+    return player == this.state.turn;
   }
 
-  moveSquare(row, column) {
-    let newBoard = this.state.board.slice();
-    newBoard[this.state.selectedSquare.row][this.state.selectedSquare.column] = null;
-    newBoard[row][column] = this.state.turn;
-    this.setState({board: newBoard});
+  setSquare(row, column) {
+    this.setState({selectedSquare: {row: row, column: column}});
+  }
+
+  deselect() {
+    this.setState({selectedSquare: null});
   }
 
   nextPlayer() {
@@ -114,38 +125,45 @@ class App extends Component {
 
   switchTurn() {
     this.moveMade = false;
-    let newBoard = JSON.parse(JSON.stringify(this.state.board));
-    newBoard[this.state.selectedSquare.row][this.state.selectedSquare.column] /= 10;
-    this.setState({turn: this.nextPlayer(), board: newBoard, selectedSquare: null});
+    this.setState({turn: this.nextPlayer(), selectedSquare: null});
   }
 
-  makeBoard(num) {
-    let b = Array(num).fill(Array(num).fill(null));
-    // make players
-    let p1 = this.makePlayerRows(PLAYER_ONE, num);
-    let p2 = this.makePlayerRows(PLAYER_TWO, num);
+  makeBoard() {
+    let num = BOARD_SIZE;
+    let b = [];
 
-    b[0] = p1.even;
-    b[1] = p1.odd;
-    b[num-1] = p2.odd;
-    b[num-2] = p2.even;
-
+    for (let i = 0; i < num; i++) {
+      b.push(Array(num).fill(null));
+    };
+    // put checkers on board
+    let c = 0;
+    for (let i = 0; i < num; i+=2) {
+      console.log(c);
+      b[0][i] = c;
+      b[num-2][i] = num + c;
+      c++;
+    }
+    for (let i=1; i < num; i+=2) {
+      console.log(c);
+      b[1][i] = c;
+      b[num-1][i] = num + c;
+      c++;
+    }
     return b;
   }
-  makePlayerRows(p, num) {
-    let evenRow = [];
-    let oddRow = [];
-    for (let i = 0; i < num; i++) {
-      if (i % 2 == 0) {
-        evenRow.push(p);
-        oddRow.push(null);
-      } else {
-        oddRow.push(p);
-        evenRow.push(null);
-      }
+
+  makeCheckers() {
+    let checkers = [];
+    for (let i = 0; i < BOARD_SIZE; i++) {
+      checkers.push({player: PLAYER_ONE, isKing: false});
     }
-    return {even: evenRow, odd: oddRow};
+    for (let i = 0; i < BOARD_SIZE; i++) {
+      checkers.push({player: PLAYER_TWO, isKing: false});
+    }
+    console.log(JSON.stringify(checkers));
+    return checkers;
   }
+
   render() {
     return (
       <div className="App">
@@ -155,7 +173,10 @@ class App extends Component {
         </div>
         <h3>Current turn: {PLAYERS[this.state.turn].name}<span className={PLAYERS[this.state.turn].class}></span></h3>
         <button onClick={this.switchTurn.bind(this)}>End my turn</button>
-        <Board board={this.state.board} selectSquare={this.selectSquare.bind(this)} />
+        <Board board={this.state.board} 
+        checkers={this.checkers}
+        selectedSquare={this.state.selectedSquare}
+        selectSquare={this.selectSquare.bind(this)} />
       </div>
     );
   }
@@ -163,8 +184,14 @@ class App extends Component {
 
 class Board extends Component {
   render() {
+    let selectedRow = this.props.selectedSquare ? this.props.selectedSquare.row : null;
     let rows = this.props.board.map((row, i) => {
-      return <Row key={i} row={row} rowNum={i} selectSquare={this.props.selectSquare} />;
+      return <Row key={i} 
+              row={row} 
+              selectedSquare={i == selectedRow ? this.props.selectedSquare : null}
+              rowNum={i} 
+              checkers={this.props.checkers}
+              selectSquare={this.props.selectSquare} />;
     });
     return (
       <div className="board">
@@ -176,8 +203,14 @@ class Board extends Component {
 
 class Row extends Component {
   render() {
+    let selectedCol = this.props.selectedSquare ? this.props.selectedSquare.column : null;
     let squares = this.props.row.map((square, i) => {
-      return <Square key={i} val={square} row={this.props.rowNum} column={i} selectSquare={this.props.selectSquare} />
+      return <Square key={i} 
+              val={square != null ? this.props.checkers[square] : null} 
+              row={this.props.rowNum} 
+              column={i} 
+              selected={i == selectedCol ? true : false}
+              selectSquare={this.props.selectSquare} />
     });
     return (
       <div className="row">
@@ -190,13 +223,12 @@ class Row extends Component {
 class Square extends Component {
   render() {
     let color = (this.props.row + this.props.column) % 2 == 0 ? "red" : "black";
-    let selection = this.props.val && this.props.val >= 10 ? " selected" : "";
+    let selection = this.props.selected ? " selected" : "";
     let classes = "square " + color + selection;
-    let player = this.props.val && this.props.val >= 10 ? this.props.val / 10 : this.props.val;
     return (
       <div className={classes} onClick={() => this.props.selectSquare(this.props.row, this.props.column)}>
-        {this.props.val &&
-          <Piece player={player} />
+        {this.props.val != null &&
+          <Piece checker={this.props.val} />
         }
       </div>
     )
@@ -204,8 +236,8 @@ class Square extends Component {
 }
 
 function Piece(props) {
-  console.log(props.player);
-  let classes = props.player ? PLAYERS[props.player].class : "";
+  console.log(props.checker);
+  let classes = props.checker ? PLAYERS[props.checker.player].class : "";
   return (
     <div className={classes}></div>
   )
