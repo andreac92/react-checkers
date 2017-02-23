@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import logo from './logo.svg';
 import './App.css';
+import Board from './board.js';
 
 const BOARD_SIZE = 8;
 const PLAYER_ONE = 1;
@@ -19,8 +20,9 @@ const PLAYERS = {
 class App extends Component {
   constructor() {
     super();
-    this.checkers = this.makeCheckers();
-    this.state = { board: this.makeBoard(), 
+    this.board = new Board(BOARD_SIZE, PLAYER_ONE, PLAYER_TWO);
+    this.checkers = this.board.checkers;
+    this.state = { board: this.board.returnBoard(), 
                   turn: PLAYER_ONE, 
                   selectedSquare: null };
     this.moveMade = false;
@@ -128,42 +130,6 @@ class App extends Component {
     this.setState({turn: this.nextPlayer(), selectedSquare: null});
   }
 
-  makeBoard() {
-    let num = BOARD_SIZE;
-    let b = [];
-
-    for (let i = 0; i < num; i++) {
-      b.push(Array(num).fill(null));
-    };
-    // put checkers on board
-    let c = 0;
-    for (let i = 0; i < num; i+=2) {
-      console.log(c);
-      b[0][i] = c;
-      b[num-2][i] = num + c;
-      c++;
-    }
-    for (let i=1; i < num; i+=2) {
-      console.log(c);
-      b[1][i] = c;
-      b[num-1][i] = num + c;
-      c++;
-    }
-    return b;
-  }
-
-  makeCheckers() {
-    let checkers = [];
-    for (let i = 0; i < BOARD_SIZE; i++) {
-      checkers.push({player: PLAYER_ONE, isKing: false});
-    }
-    for (let i = 0; i < BOARD_SIZE; i++) {
-      checkers.push({player: PLAYER_TWO, isKing: false});
-    }
-    console.log(JSON.stringify(checkers));
-    return checkers;
-  }
-
   render() {
     return (
       <div className="App">
@@ -173,7 +139,7 @@ class App extends Component {
         </div>
         <h3>Current turn: {PLAYERS[this.state.turn].name}<span className={PLAYERS[this.state.turn].class}></span></h3>
         <button onClick={this.switchTurn.bind(this)}>End my turn</button>
-        <Board board={this.state.board} 
+        <GameBoard board={this.state.board} 
         checkers={this.checkers}
         selectedSquare={this.state.selectedSquare}
         selectSquare={this.selectSquare.bind(this)} />
@@ -182,7 +148,7 @@ class App extends Component {
   }
 }
 
-class Board extends Component {
+class GameBoard extends Component {
   render() {
     let selectedRow = this.props.selectedSquare ? this.props.selectedSquare.row : null;
     let rows = this.props.board.map((row, i) => {
