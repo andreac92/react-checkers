@@ -13,3 +13,8 @@ Classic checkers game made with React/JS.
 * Game switches player turn after player has completed all legal moves for that turn
 * Game ends when one player no longer has any moves (and thus the other player wins)
 * When a player's checker reaches the last row of the opposite end of the board this results in a King checker, which can move forwards and backwards. Kings are indicated by a crown icon.
+
+## Future features
+* Ability to name each player
+* Ability to drag checkers
+* Ability to play a "computer" opponent
