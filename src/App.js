@@ -181,7 +181,6 @@ class Square extends Component {
 function Piece(props) {
   console.log(props.checker);
   let classes = "";
-  let val = "";
   if (props.checker) {
     classes += PLAYERS[props.checker.player].class;
     if (props.checker.isKing) {
